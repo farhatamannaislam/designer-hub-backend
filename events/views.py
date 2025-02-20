@@ -4,10 +4,9 @@ from designerhub.permissions import IsOwnerOrReadOnly
 from .models import Event
 from .serializers import EventSerializer
 
-
 class EventList(generics.ListCreateAPIView):
     """
-    List events or create a events if logged in
+    List events or create an event if logged in.
     """
     serializer_class = EventSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -31,8 +30,17 @@ class EventList(generics.ListCreateAPIView):
     ordering_fields = []
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        """
+        Ensure the event date is not in the past before saving.
+        """
+        from datetime import date
+        from rest_framework.exceptions import ValidationError
 
+        event_date = serializer.validated_data.get("event_date")
+        if event_date and event_date < date.today():
+            raise ValidationError({"event_date": "Event date cannot be in the past!"})
+
+        serializer.save(owner=self.request.user)
 
 class EventDetail(generics.RetrieveUpdateDestroyAPIView):
     """
@@ -41,3 +49,4 @@ class EventDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = EventSerializer
     permission_classes = [IsOwnerOrReadOnly]
     queryset = Event.objects.all().order_by("-created_at")
+
